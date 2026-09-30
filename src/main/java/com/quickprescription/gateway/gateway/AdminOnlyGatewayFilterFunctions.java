@@ -1,4 +1,4 @@
-package com.courtreservation.gateway.gateway;
+package com.quickprescription.gateway.gateway;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;

@@ -1,4 +1,4 @@
-package com.courtreservation.gateway.security;
+package com.quickprescription.gateway.security;
 
 import java.io.IOException;
 import java.util.List;

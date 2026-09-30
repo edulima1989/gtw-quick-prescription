@@ -1,4 +1,4 @@
-package com.courtreservation.gateway.gateway;
+package com.quickprescription.gateway.gateway;
 
 import org.springframework.cloud.gateway.server.mvc.filter.SimpleFilterSupplier;
 import org.springframework.stereotype.Component;

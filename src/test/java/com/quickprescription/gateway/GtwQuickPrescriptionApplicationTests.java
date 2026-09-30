@@ -1,10 +1,10 @@
-package com.courtreservation.gateway;
+package com.quickprescription.gateway;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class GtwCourtReservationApplicationTests {
+class GtwQuickPrescriptionApplicationTests {
 
   @Test
   void contextLoads() {

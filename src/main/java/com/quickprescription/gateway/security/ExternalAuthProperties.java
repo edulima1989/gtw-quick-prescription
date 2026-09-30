@@ -1,4 +1,4 @@
-package com.courtreservation.gateway.security;
+package com.quickprescription.gateway.security;
 
 import java.util.ArrayList;
 import java.util.List;

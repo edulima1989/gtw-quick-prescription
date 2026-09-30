@@ -1,81 +1,37 @@
 spring:
   application:
-    name: gtw-court-reservation
+    name: gtw-quick-prescription
   cloud:
     gateway:
       server:
         webmvc:
           routes:
 
-            - id: court-admin-redirect
-              uri: ${COURT_SERVICE_URI:http://localhost:8081}/
-              predicates:
-                - Path=/courts/**,/courts
-                - Method=POST,PUT,DELETE, PATCH
-              filters:
-                - AdminOnly
-
-            - id: court-redirect
-              uri: ${COURT_SERVICE_URI:http://localhost:8081}/
-              predicates:
-                - Path=/courts/**,/courts
-
             - id: users-redirect
-              uri: ${AUTH_SERVICE_URI:http://localhost:8082}/
+              uri: ${AUTH_SERVICE_URI:http://localhost:8081}/
               predicates:
                 - Path=/users/**,/users
 
-            - id: reservations-create-redirect
-              uri: ${RESERVATION_SERVICE_URI:http://localhost:8083}/
+            - id: prescription-redirect
+              uri: ${PRESCRIPTIONS_SERVICE_URI:http://localhost:8082}/
               predicates:
-                - Path=/reservations/api/reservations
-                - Method=POST
-              filters:
-                - FinalUserOnly
-
-            - id: reservations-cancel-redirect
-              uri: ${RESERVATION_SERVICE_URI:http://localhost:8083}/
-              predicates:
-                - Path=/reservations/api/reservations/*/cancel
-                - Method=PATCH
-              filters:
-                - ReservationsOwnership
-
-            - id: reservations-redirect
-              uri: ${RESERVATION_SERVICE_URI:http://localhost:8083}/
-              predicates:
-                - Path=/reservations/**,/reservations
-
-            - id: reports-redirect
-              uri: ${REPORT_SERVICE_URI:http://localhost:8084}/
-              predicates:
-                - Path=/reports/**,/reports
-              filters:
-                - AdminOnly
+                - Path=/prescriptions/api/prescriptions
 
 security:
   external-auth:
-    validation-url: ${AUTH_SERVICE_URI:http://localhost:8082}/users/api/auth/validate-session
+    validation-url: ${AUTH_SERVICE_URI:http://localhost:8081}/users/api/auth/validate-session
     protected-paths:
-      - /courts/**
-      - /users/**
-      - /reservations/**
-      - /reports/**
+      - /prescriptions/**
     excluded-paths:
       - /users/api/auth/login
       - /users/api/auth/register
       - /users/swagger-ui/**
       - /users/v3/api-docs/**
       - /users/v3/api-docs/swagger-config
-      - /courts/swagger-ui/**
-      - /courts/api-docs/**
-      - /courts/api-docs/swagger-config
-      - /reservations/swagger-ui/**
-      - /reservations/v3/api-docs/**
-      - /reservations/v3/api-docs/swagger-config
-      - /reports/swagger-ui/**
-      - /reports/api-docs/**
-      - /reports/api-docs/swagger-config
+      - /prescriptions/swagger-ui/**
+      - /prescriptions/api-docs/**
+      - /prescriptions/api-docs/swagger-config
+
 cors:
   allowed-origins:
     - ${SHELL_ORIGIN:http://localhost:3000}
