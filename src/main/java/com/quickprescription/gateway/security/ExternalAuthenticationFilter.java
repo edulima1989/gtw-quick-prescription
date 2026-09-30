@@ -72,21 +72,31 @@ public class ExternalAuthenticationFilter extends OncePerRequestFilter {
       return;
     }
 
+    TokenValidationResponse validation;
     try {
-      restClient.post()
+      validation = restClient.post()
           .uri(validationUrl)
           .contentType(MediaType.APPLICATION_JSON)
           .accept(MediaType.APPLICATION_JSON)
           //.header(HttpHeaders.AUTHORIZATION, authorization)
           .body(new TokenValidationRequest(token))
           .retrieve()
-          .toBodilessEntity();
-      filterChain.doFilter(request, response);
+          .body(TokenValidationResponse.class);
     } catch (RestClientResponseException ex) {
       writeError(response, HttpStatus.UNAUTHORIZED, "Authentication rejected by external service");
+      return;
     } catch (ResourceAccessException ex) {
       writeError(response, HttpStatus.SERVICE_UNAVAILABLE, "External authentication service is unavailable");
+      return;
     }
+
+    // El Auth Service responde 200 con {"valid": false} para tokens inválidos o expirados.
+    if (validation == null || !Boolean.TRUE.equals(validation.valid())) {
+      writeError(response, HttpStatus.UNAUTHORIZED, "Invalid or expired token");
+      return;
+    }
+
+    filterChain.doFilter(request, response);
   }
 
   private void writeError(HttpServletResponse response, HttpStatus status, String message) throws IOException {
@@ -103,5 +113,8 @@ public class ExternalAuthenticationFilter extends OncePerRequestFilter {
   }
 
   private record TokenValidationRequest(String token) {
+  }
+
+  private record TokenValidationResponse(Boolean valid) {
   }
 }
