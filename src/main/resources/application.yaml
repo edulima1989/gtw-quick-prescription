@@ -8,18 +8,18 @@ spring:
           routes:
 
             - id: users-redirect
-              uri: ${AUTH_SERVICE_URI:http://localhost:8081}/
+              uri: ${AUTH_SERVICE_URI:http://localhost:8082}/
               predicates:
                 - Path=/users/**,/users
 
             - id: prescription-redirect
-              uri: ${PRESCRIPTIONS_SERVICE_URI:http://localhost:8082}/
+              uri: ${PRESCRIPTIONS_SERVICE_URI:http://localhost:8081}/
               predicates:
-                - Path=/prescriptions/api/prescriptions
+                - Path=/prescriptions/**,/prescriptions
 
 security:
   external-auth:
-    validation-url: ${AUTH_SERVICE_URI:http://localhost:8081}/users/api/auth/validate-session
+    validation-url: ${AUTH_SERVICE_URI:http://localhost:8082}/users/api/auth/validate-session
     protected-paths:
       - /prescriptions/**
     excluded-paths:

@@ -46,8 +46,9 @@ services:
     container_name: msa-quick-prescription
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/prescriptions_db
-      DB_USERNAME: ${POSTGRES_USER:-postgres}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-mysecretpassword}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-mysecretpassword}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
     ports:
       - "8081:8081"
     depends_on:
