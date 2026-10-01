@@ -7,30 +7,47 @@ spring:
         webmvc:
           routes:
 
-            - id: users-redirect
-              uri: ${AUTH_SERVICE_URI:http://localhost:8082}/
+            - id: auth
+              uri: ${AUTH_SERVICE_URI:http://localhost:8082}
               predicates:
-                - Path=/users/**,/users
+                - Path=/api/v1/auth/register,/api/v1/auth/login
+                - Method=POST
+              filters:
+                - RewritePath=/api/v1/auth/(?<segment>.*), /users/api/auth/$\{segment}
 
-            - id: prescription-redirect
-              uri: ${PRESCRIPTIONS_SERVICE_URI:http://localhost:8081}/
+            - id: prescriptions
+              uri: ${PRESCRIPTIONS_SERVICE_URI:http://localhost:8081}
               predicates:
-                - Path=/prescriptions/**,/prescriptions
+                - Path=/api/v1/cie10,/api/v1/cie10/**,/api/v1/vademecum,/api/v1/vademecum/**,/api/v1/recetas,/api/v1/recetas/**
+              filters:
+                - PrefixPath=/prescriptions
+
+            - id: auth-swagger
+              uri: ${AUTH_SERVICE_URI:http://localhost:8082}
+              predicates:
+                - Path=/users/swagger-ui.html,/users/swagger-ui/**,/users/v3/api-docs,/users/v3/api-docs/**
+
+            - id: prescriptions-swagger
+              uri: ${PRESCRIPTIONS_SERVICE_URI:http://localhost:8081}
+              predicates:
+                - Path=/prescriptions/swagger-ui.html,/prescriptions/swagger-ui/**,/prescriptions/api-docs,/prescriptions/api-docs/**
 
 security:
   external-auth:
+    # Llamada interna directa al Auth Service; no pasa por las rutas del Gateway.
     validation-url: ${AUTH_SERVICE_URI:http://localhost:8082}/users/api/auth/validate-session
+    # Rutas públicas (antes de reescribir). Formato: "[MÉTODO ]patrón".
     protected-paths:
-      - /prescriptions/**
+      - /**
     excluded-paths:
-      - /users/api/auth/login
-      - /users/api/auth/register
+      - POST /api/v1/auth/login
+      - POST /api/v1/auth/register
+      - /users/swagger-ui.html
       - /users/swagger-ui/**
       - /users/v3/api-docs/**
-      - /users/v3/api-docs/swagger-config
+      - /prescriptions/swagger-ui.html
       - /prescriptions/swagger-ui/**
       - /prescriptions/api-docs/**
-      - /prescriptions/api-docs/swagger-config
 
 cors:
   allowed-origins:

@@ -39,17 +39,17 @@ public class ExternalAuthenticationFilter extends OncePerRequestFilter {
       return true;
     }
 
-    String path = request.getRequestURI();
-    if (matchesAny(authProperties.getExcludedPaths(), path)) {
+    if (matchesAny(authProperties.getExcludedPaths(), request)) {
       return true;
     }
 
+    // Sin rutas protegidas configuradas se protege todo (cerrado por defecto).
     List<String> protectedPaths = authProperties.getProtectedPaths();
     if (protectedPaths == null || protectedPaths.isEmpty()) {
-      return true;
+      return false;
     }
 
-    return protectedPaths.stream().noneMatch(pattern -> pathMatcher.match(pattern, path));
+    return !matchesAny(protectedPaths, request);
   }
 
   @Override
@@ -105,11 +105,23 @@ public class ExternalAuthenticationFilter extends OncePerRequestFilter {
     response.getWriter().write("{\"error\":\"" + message + "\"}");
   }
 
-  private boolean matchesAny(List<String> patterns, String path) {
+  private boolean matchesAny(List<String> patterns, HttpServletRequest request) {
     if (patterns == null || patterns.isEmpty()) {
       return false;
     }
-    return patterns.stream().anyMatch(pattern -> pathMatcher.match(pattern, path));
+    return patterns.stream().anyMatch(pattern -> matches(pattern, request));
+  }
+
+  // Patrón con formato "[MÉTODO ]ruta", p. ej. "POST /api/v1/auth/login" o "/api/v1/**".
+  private boolean matches(String pattern, HttpServletRequest request) {
+    String trimmed = pattern.trim();
+    int space = trimmed.indexOf(' ');
+    if (space < 0) {
+      return pathMatcher.match(trimmed, request.getRequestURI());
+    }
+    String method = trimmed.substring(0, space);
+    String path = trimmed.substring(space + 1).trim();
+    return method.equalsIgnoreCase(request.getMethod()) && pathMatcher.match(path, request.getRequestURI());
   }
 
   private record TokenValidationRequest(String token) {

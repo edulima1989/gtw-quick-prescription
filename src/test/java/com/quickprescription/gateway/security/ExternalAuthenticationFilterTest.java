@@ -31,7 +31,12 @@ class ExternalAuthenticationFilterTest {
   void setUp() {
     ExternalAuthProperties properties = new ExternalAuthProperties();
     properties.setValidationUrl(VALIDATION_URL);
-    properties.setProtectedPaths(List.of("/prescriptions/**"));
+    properties.setProtectedPaths(List.of("/**"));
+    properties.setExcludedPaths(List.of(
+        "POST /api/v1/auth/login",
+        "POST /api/v1/auth/register",
+        "/users/swagger-ui/**",
+        "/users/v3/api-docs/**"));
 
     RestClient.Builder builder = RestClient.builder();
     authServer = MockRestServiceServer.bindTo(builder).build();
@@ -79,7 +84,7 @@ class ExternalAuthenticationFilterTest {
   @Test
   void rejectsMissingAuthorizationWithoutCallingAuthService() throws Exception {
     MockFilterChain chain = new MockFilterChain();
-    MockHttpServletResponse response = filter(new MockHttpServletRequest("GET", "/prescriptions/api/v1/cie10"), chain);
+    MockHttpServletResponse response = filter(new MockHttpServletRequest("GET", "/api/v1/cie10"), chain);
 
     assertThat(response.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
     assertThat(chain.getRequest()).isNull();
@@ -96,6 +101,49 @@ class ExternalAuthenticationFilterTest {
     authServer.verify();
   }
 
+  @Test
+  void allowsLoginAndRegisterWithoutToken() throws Exception {
+    for (String path : List.of("/api/v1/auth/login", "/api/v1/auth/register")) {
+      MockFilterChain chain = new MockFilterChain();
+      MockHttpServletResponse response = filter(new MockHttpServletRequest("POST", path), chain);
+
+      assertThat(response.getStatus()).isNotEqualTo(HttpStatus.UNAUTHORIZED.value());
+      assertThat(chain.getRequest()).isNotNull();
+    }
+    authServer.verify();
+  }
+
+  @Test
+  void requiresTokenForLoginWithOtherMethod() throws Exception {
+    MockFilterChain chain = new MockFilterChain();
+    MockHttpServletResponse response = filter(new MockHttpServletRequest("GET", "/api/v1/auth/login"), chain);
+
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+    assertThat(chain.getRequest()).isNull();
+  }
+
+  @Test
+  void requiresTokenForAnyOtherPath() throws Exception {
+    for (String path : List.of("/api/v1/auth/validate-session", "/users/api/auth/validate-session",
+        "/prescriptions/api/v1/cie10", "/api/v1/recetas")) {
+      MockFilterChain chain = new MockFilterChain();
+      MockHttpServletResponse response = filter(new MockHttpServletRequest("POST", path), chain);
+
+      assertThat(response.getStatus()).as(path).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+      assertThat(chain.getRequest()).isNull();
+    }
+    authServer.verify();
+  }
+
+  @Test
+  void allowsSwaggerWithoutToken() throws Exception {
+    MockFilterChain chain = new MockFilterChain();
+    MockHttpServletResponse response = filter(new MockHttpServletRequest("GET", "/users/v3/api-docs"), chain);
+
+    assertThat(response.getStatus()).isNotEqualTo(HttpStatus.UNAUTHORIZED.value());
+    assertThat(chain.getRequest()).isNotNull();
+  }
+
   private void expectValidation(String body) {
     authServer.expect(requestTo(VALIDATION_URL))
         .andExpect(method(HttpMethod.POST))
@@ -103,7 +151,7 @@ class ExternalAuthenticationFilterTest {
   }
 
   private MockHttpServletRequest withAuthorization(String authorization) {
-    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/prescriptions/api/v1/cie10");
+    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/cie10");
     request.addHeader(HttpHeaders.AUTHORIZATION, authorization);
     return request;
   }
