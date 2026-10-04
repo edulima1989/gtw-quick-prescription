@@ -28,35 +28,49 @@ public class PreflightCorsFilter extends OncePerRequestFilter {
   @Override
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
       throws ServletException, IOException {
-    if (!HttpMethod.OPTIONS.matches(request.getMethod())) {
-      filterChain.doFilter(request, response);
-      return;
-    }
-
     String origin = request.getHeader(HttpHeaders.ORIGIN);
-    String requestedMethod = request.getHeader(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD);
-    if (!StringUtils.hasText(origin) || !StringUtils.hasText(requestedMethod)) {
-      filterChain.doFilter(request, response);
+    boolean allowed = StringUtils.hasText(origin) && isAllowedOrigin(origin);
+
+    // Preflight (OPTIONS): el gateway responde directamente con las cabeceras CORS.
+    if (HttpMethod.OPTIONS.matches(request.getMethod())) {
+      String requestedMethod = request.getHeader(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD);
+      if (!StringUtils.hasText(origin) || !StringUtils.hasText(requestedMethod)) {
+        filterChain.doFilter(request, response);
+        return;
+      }
+      if (!allowed) {
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        return;
+      }
+      response.setHeader(HttpHeaders.VARY, String.join(", ",
+          HttpHeaders.ORIGIN,
+          HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD,
+          HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS));
+      applyAllowOrigin(response, origin);
+      response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, String.join(", ", corsProperties.getAllowedMethods()));
+      response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, resolveAllowedHeaders(request));
+      response.setHeader(HttpHeaders.ACCESS_CONTROL_MAX_AGE, String.valueOf(corsProperties.getMaxAgeSeconds()));
+      response.setStatus(HttpServletResponse.SC_OK);
       return;
     }
 
-    if (!isAllowedOrigin(origin)) {
-      response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-      return;
+    // Solicitud real: se fijan las cabeceras CORS ANTES de proxyar al microservicio, para que estén
+    // presentes aunque la respuesta se envíe en streaming. Los microservicios downstream ya no emiten
+    // CORS (está centralizado aquí), de modo que no hay riesgo de cabeceras duplicadas.
+    if (allowed) {
+      applyAllowOrigin(response, origin);
+      response.setHeader(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, HttpHeaders.CONTENT_DISPOSITION);
     }
+    filterChain.doFilter(request, response);
+  }
 
-    response.setHeader(HttpHeaders.VARY, String.join(", ",
-        HttpHeaders.ORIGIN,
-        HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD,
-        HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS));
+  /** Fija Access-Control-Allow-Origin (y credenciales) a un único valor, reemplazando cualquiera previo. */
+  private void applyAllowOrigin(HttpServletResponse response, String origin) {
     response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, origin);
-    response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, String.join(", ", corsProperties.getAllowedMethods()));
-    response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, resolveAllowedHeaders(request));
-    response.setHeader(HttpHeaders.ACCESS_CONTROL_MAX_AGE, String.valueOf(corsProperties.getMaxAgeSeconds()));
+    response.addHeader(HttpHeaders.VARY, HttpHeaders.ORIGIN);
     if (corsProperties.isAllowCredentials()) {
       response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true");
     }
-    response.setStatus(HttpServletResponse.SC_OK);
   }
 
   private boolean isAllowedOrigin(String origin) {
